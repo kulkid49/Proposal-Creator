@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Proposal Builder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- TailwindCSS CDN for clean design -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Docx.js for generating .docx documents -->
+  <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+  <style>
+    /* Simple focus & scrollbar polish */
+    :root { color-scheme: light dark; }
+    .input, textarea { outline: none; }
+    .input:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(59,130,246,.4); }
+    ::-webkit-scrollbar { height: 10px; width: 10px; }
+    ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 8px; }
+    details[open] summary svg { transform: rotate(90deg); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+  <header class="bg-white border-b sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white grid place-items-center text-xl font-bold">P</div>
+      <div>
+        <h1 class="text-xl md:text-2xl font-semibold">Proposal Builder</h1>
+        <p class="text-sm text-slate-500">Fill the form → Review → Download a .docx proposal</p>
+      </div>
+      <div class="ms-auto">
+        <button id="openPreview" type="button" class="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-xl border bg-white hover:bg-slate-50">
+          <span>Quick Preview (text)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-4 grid lg:grid-cols-2 gap-6">
+    <!-- FORM -->
+    <section class="bg-white rounded-2xl shadow-sm border p-4 md:p-6">
+      <form id="proposalForm" class="space-y-6">
+        <!-- General -->
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Proposal Title</label>
+            <input name="title" class="input w-full rounded-xl border px-3 py-2" placeholder="Proposal For PT ISPAT Intranet Portal" required />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Document File Name</label>
+            <input name="fileName" class="input w-full rounded-xl border px-3 py-2" placeholder="PT_ISPAT_Proposal_v1.docx" required />
+            <p class="text-xs text-slate-500 mt-1">.docx will be used if you omit the extension.</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Prepared By</label>
+            <input name="preparedBy" class="input w-full rounded-xl border px-3 py-2" placeholder="Samya Soren" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium mb-1">Version</label>
+              <input name="version" class="input w-full rounded-xl border px-3 py-2" placeholder="1.0" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Date</label>
+              <input name="date" type="date" class="input w-full rounded-xl border px-3 py-2" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Company Locations -->
+        <details class="group rounded-xl border p-4">
+          <summary class="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+            <svg class="w-4 h-4 transition" viewBox="0 0 20 20" fill="currentColor"><path d="M7 5l6 5-6 5V5z"/></svg>
+            Company Locations (Optional)
+          </summary>
+          <div class="mt-4 grid md:grid-cols-3 gap-3">
+            <textarea name="addrUSA" class="rounded-xl border px-3 py-2" rows="5" placeholder="USA&#10;33 Wood Avenue South&#10;Suite 600, Iselin&#10;New Jersey 08830"></textarea>
+            <textarea name="addrLUX" class="rounded-xl border px-3 py-2" rows="5" placeholder="LUXEMBOURG&#10;65 Boulevard de la Pétrusse&#10;L-2320&#10;Luxembourg"></textarea>
+            <textarea name="addrIND" class="rounded-xl border px-3 py-2" rows="5" placeholder="INDIA&#10;PS Srijan Tech Park (5th FL)&#10;DN-52 Sector-V, Salt Lake&#10;Calcutta 700 091"></textarea>
+          </div>
+        </details>
+
+        <!-- Sections -->
+        <div class="grid gap-4">
+          <!-- Helper to generate a section textarea -->
+          <div class="grid gap-6">
+            <div>
+              <label class="block text-sm font-medium mb-1">1.1 OVERVIEW</label>
+              <textarea name="overview" class="w-full rounded-xl border px-3 py-2" rows="5" placeholder="Project purpose, context, and value"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">1.2 BUSINESS OBJECTIVES</label>
+              <textarea name="businessObjectives" class="w-full rounded-xl border px-3 py-2" rows="5" placeholder="Bulleted or paragraph objectives"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">1.3 SCOPE OF WORK</label>
+              <textarea name="scope" class="w-full rounded-xl border px-3 py-2" rows="8" placeholder="Modules, integrations, pages, and activities"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">1.4 PROPOSED SOLUTION OVERVIEW</label>
+              <textarea name="solution" class="w-full rounded-xl border px-3 py-2" rows="6" placeholder="Platform, approach, architecture, integrations"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">1.5 DELIVERABLES</label>
+              <textarea name="deliverables" class="w-full rounded-xl border px-3 py-2" rows="5" placeholder="Bulleted deliverables"></textarea>
+            </div>
+          </div>
+
+          <!-- Project Organization -->
+          <div>
+            <label class="block text-sm font-medium mb-1">1.6 PROJECT ORGANIZATION</label>
+            <textarea name="organization" class="w-full rounded-xl border px-3 py-2" rows="4" placeholder="Client & vendor SPOCs, roles & responsibilities"></textarea>
+          </div>
+
+          <!-- Timelines Table -->
+          <div>
+            <div class="flex items-center justify-between">
+              <label class="block text-sm font-medium mb-1">1.7 TIMELINES (Phases)</label>
+              <button type="button" id="addTimelineRow" class="text-indigo-600 hover:underline text-sm">+ Add row</button>
+            </div>
+            <div class="overflow-auto border rounded-xl">
+              <table id="timelineTable" class="min-w-full text-sm">
+                <thead class="bg-slate-100">
+                  <tr>
+                    <th class="px-3 py-2 text-left">#</th>
+                    <th class="px-3 py-2 text-left">Task Details</th>
+                    <th class="px-3 py-2 text-left">Start (W# / Date)</th>
+                    <th class="px-3 py-2 text-left">End (W# / Date)</th>
+                    <th class="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Assumptions -->
+          <div>
+            <label class="block text-sm font-medium mb-1">1.8 ASSUMPTIONS</label>
+            <textarea name="assumptions" class="w-full rounded-xl border px-3 py-2" rows="5" placeholder="Licenses, environments, access, prerequisites"></textarea>
+          </div>
+
+          <!-- Risks Table -->
+          <div>
+            <div class="flex items-center justify-between">
+              <label class="block text-sm font-medium mb-1">1.9 INITIAL RISKS / ISSUES</label>
+              <button type="button" id="addRiskRow" class="text-indigo-600 hover:underline text-sm">+ Add row</button>
+            </div>
+            <div class="overflow-auto border rounded-xl">
+              <table id="riskTable" class="min-w-full text-sm">
+                <thead class="bg-slate-100">
+                  <tr>
+                    <th class="px-3 py-2 text-left">#</th>
+                    <th class="px-3 py-2 text-left">Risk Description</th>
+                    <th class="px-3 py-2 text-left">Impact (H/M/L)</th>
+                    <th class="px-3 py-2 text-left">Mitigation</th>
+                    <th class="px-3 py-2 text-left">Accountable</th>
+                    <th class="px-3 py-2 text-left">ETA</th>
+                    <th class="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Acceptance Criteria -->
+          <div>
+            <label class="block text-sm font-medium mb-1">1.10 ACCEPTANCE CRITERIA</label>
+            <textarea name="acceptance" class="w-full rounded-xl border px-3 py-2" rows="5" placeholder="What constitutes acceptance in UAT/Prod"></textarea>
+          </div>
+
+          <!-- Resource Plan Table -->
+          <div>
+            <div class="flex items-center justify-between">
+              <label class="block text-sm font-medium mb-1">1.11 RESOURCE PLAN</label>
+              <button type="button" id="addResourceRow" class="text-indigo-600 hover:underline text-sm">+ Add row</button>
+            </div>
+            <div class="overflow-auto border rounded-xl">
+              <table id="resourceTable" class="min-w-full text-sm">
+                <thead class="bg-slate-100">
+                  <tr>
+                    <th class="px-3 py-2 text-left">#</th>
+                    <th class="px-3 py-2 text-left">Skill Set</th>
+                    <th class="px-3 py-2 text-left">Exp. Level</th>
+                    <th class="px-3 py-2 text-left">Daily Rate (INR)</th>
+                    <th class="px-3 py-2 text-left">Engagement (FTE)</th>
+                    <th class="px-3 py-2 text-left">Total Man Days</th>
+                    <th class="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Commercials Table -->
+          <div>
+            <div class="flex items-center justify-between">
+              <label class="block text-sm font-medium mb-1">1.12 COMMERCIALS</label>
+              <button type="button" id="addCommercialRow" class="text-indigo-600 hover:underline text-sm">+ Add row</button>
+            </div>
+            <div class="overflow-auto border rounded-xl">
+              <table id="commercialTable" class="min-w-full text-sm">
+                <thead class="bg-slate-100">
+                  <tr>
+                    <th class="px-3 py-2 text-left">Payment Type</th>
+                    <th class="px-3 py-2 text-left">Payment Terms</th>
+                    <th class="px-3 py-2 text-left">Investment (INR)</th>
+                    <th class="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Payment Terms -->
+          <div>
+            <label class="block text-sm font-medium mb-1">1.13 PAYMENT TERMS</label>
+            <textarea name="paymentTerms" class="w-full rounded-xl border px-3 py-2" rows="5" placeholder="Milestone-based payments, percentages, triggers"></textarea>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-3 pt-2">
+          <button id="submitBtn" type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
+            <span>Generate Proposal</span>
+          </button>
+          <button type="reset" class="px-4 py-2 rounded-xl border hover:bg-slate-50">Reset</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- LIVE PREVIEW (TEXT) -->
+    <aside class="bg-white rounded-2xl shadow-sm border p-4 md:p-6">
+      <h2 class="text-lg font-semibold mb-3">Live Preview</h2>
+      <div id="preview" class="prose max-w-none text-sm">
+        <p class="text-slate-500">Start typing in the form to see a quick textual preview here.</p>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Download Modal -->
+  <div id="downloadModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+      <h3 class="text-lg font-semibold">Your proposal is ready</h3>
+      <p class="text-sm text-slate-600 mt-1">Download the generated Word document now?</p>
+      <div class="mt-4 flex items-center gap-2">
+        <button id="confirmDownload" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">Download</button>
+        <button id="cancelDownload" class="px-4 py-2 rounded-xl border hover:bg-slate-50">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="max-w-7xl mx-auto px-4 py-8 text-xs text-slate-500">
+    <p>Tip: You can add multiple rows in Timelines, Risks, Resource Plan, and Commercials. The generated .docx mirrors the proposal structure.</p>
+  </footer>
+
+  <script>
+    const { Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } = docx;
+
+    // ---------- Helpers ----------
+    function q(sel, root=document){ return root.querySelector(sel); }
+    function qa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+
+    function addRow(tableId, cells) {
+      const tbody = q(`#${tableId} tbody`);
+      const tr = document.createElement('tr');
+      tr.className = "border-b";
+      cells.forEach((cell, idx) => {
+        const td = document.createElement('td');
+        td.className = "px-3 py-2";
+        if (cell === 'index') {
+          td.textContent = (tbody.children.length + 1).toString();
+        } else if (cell === 'del') {
+          td.className += " text-right";
+          td.innerHTML = '<button type="button" class="text-red-600 hover:underline text-sm">Delete</button>';
+        } else {
+          td.innerHTML = `<input class="input w-full rounded-lg border px-2 py-1" placeholder="${cell}" />`;
+        }
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    }
+
+    function captureTable(tableId) {
+      const rows = [];
+      qa(`#${tableId} tbody tr`).forEach(tr => {
+        const inputs = qa('input', tr).map(i => i.value.trim());
+        rows.push(inputs);
+      });
+      return rows;
+    }
+
+    function safeFileName(name) {
+      let fn = name.trim();
+      if (!fn.toLowerCase().endsWith('.docx')) fn += '.docx';
+      return fn.replace(/[\\/:*?"<>|]/g, '_');
+    }
+
+    function toParas(text) {
+      if (!text || !text.trim()) return [];
+      return text.split(/\n+/).map(line => new Paragraph({ children: [new TextRun(line)] }));
+    }
+
+    function bullets(text) {
+      if (!text || !text.trim()) return [];
+      return text.split(/\n+/).map(line => new Paragraph({ text: line.replace(/^\s*[-•]\s*/, ''), bullet: { level: 0 } }));
+    }
+
+    function heading(txt, level=HeadingLevel.HEADING_2) {
+      return new Paragraph({ text: txt, heading: level, spacing: { before: 240, after: 120 } });
+    }
+
+    // ---------- Default seed rows ----------
+    addRow('timelineTable', ['index', 'e.g., Requirement Documentation', 'W1 / 2025-08-18', 'W2 / 2025-08-29', 'del']);
+    addRow('riskTable', ['index', 'Risk description', 'H/M/L', 'Mitigation plan', 'Owner', 'ETA', 'del']);
+    addRow('resourceTable', ['index', 'Skill (e.g., SharePoint Dev)', 'Mid/Sr', '8000', '1', '10', 'del']);
+    addRow('commercialTable', ['Upfront (30%)', 'Advance payment on PO', '100000', 'del']);
+
+    // Delete handlers
+    document.addEventListener('click', (e) => {
+      if (e.target.matches('#addTimelineRow')) addRow('timelineTable', ['index', 'Task name', 'Start', 'End', 'del']);
+      if (e.target.matches('#addRiskRow')) addRow('riskTable', ['index', 'Risk description', 'H/M/L', 'Mitigation', 'Owner', 'ETA', 'del']);
+      if (e.target.matches('#addResourceRow')) addRow('resourceTable', ['index', 'Skill', 'Exp. Level', 'Daily Rate', 'Engagement', 'Total Man Days', 'del']);
+      if (e.target.matches('#addCommercialRow')) addRow('commercialTable', ['Payment Type', 'Payment Terms', 'Investment', 'del']);
+      if (e.target.textContent === 'Delete' && e.target.closest('tr')) e.target.closest('tr').remove();
+    });
+
+    // Live preview
+    const form = q('#proposalForm');
+    const preview = q('#preview');
+    form.addEventListener('input', () => {
+      const fd = new FormData(form);
+      const title = fd.get('title') || 'Proposal';
+      const preparedBy = fd.get('preparedBy') || '';
+      const version = fd.get('version') || '';
+      const date = fd.get('date') || '';
+      const sections = [
+        ['1.1 Overview', fd.get('overview')],
+        ['1.2 Business Objectives', fd.get('businessObjectives')],
+        ['1.3 Scope of Work', fd.get('scope')],
+        ['1.4 Proposed Solution Overview', fd.get('solution')],
+        ['1.5 Deliverables', fd.get('deliverables')],
+        ['1.6 Project Organization', fd.get('organization')],
+        ['1.8 Assumptions', fd.get('assumptions')],
+        ['1.10 Acceptance Criteria', fd.get('acceptance')],
+        ['1.13 Payment Terms', fd.get('paymentTerms')],
+      ];
+      preview.innerHTML = `
+        <h3 class="text-base font-semibold">${title}</h3>
+        <p class="text-xs text-slate-500">Prepared by ${preparedBy || '—'} | v${version || '—'} | ${date || '—'}</p>
+        <hr class="my-3"/>
+        ${sections.map(([h,t]) => `
+          <h4 class="font-semibold mt-3">${h}</h4>
+          <p class="whitespace-pre-wrap">${(t||'').trim() || '<span class="text-slate-400">No content yet</span>'}</p>
+        `).join('')}
+      `;
+    });
+
+    // Quick Preview button
+    q('#openPreview').addEventListener('click', () => {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    });
+
+    // Modal logic
+    const modal = q('#downloadModal');
+    function openModal(){ modal.classList.remove('hidden'); modal.classList.add('flex'); }
+    function closeModal(){ modal.classList.add('hidden'); modal.classList.remove('flex'); }
+    q('#cancelDownload').onclick = closeModal;
+
+    let pendingBlob = null;
+    q('#confirmDownload').addEventListener('click', () => {
+      if (!pendingBlob) return;
+      const fd = new FormData(form);
+      const name = safeFileName(fd.get('fileName') || 'Proposal.docx');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(pendingBlob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(a.href);
+      a.remove();
+      pendingBlob = null;
+      closeModal();
+    });
+
+    // Submit -> build docx -> ask to download
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+
+      const title = (fd.get('title') || '').trim();
+      const fileName = safeFileName(fd.get('fileName') || 'Proposal.docx');
+      const preparedBy = (fd.get('preparedBy') || '').trim();
+      const version = (fd.get('version') || '').trim();
+      const date = (fd.get('date') || '').trim();
+
+      const overview = fd.get('overview');
+      const businessObjectives = fd.get('businessObjectives');
+      const scope = fd.get('scope');
+      const solution = fd.get('solution');
+      const deliverables = fd.get('deliverables');
+      const organization = fd.get('organization');
+      const assumptions = fd.get('assumptions');
+      const acceptance = fd.get('acceptance');
+      const paymentTerms = fd.get('paymentTerms');
+
+      const addrUSA = fd.get('addrUSA');
+      const addrLUX = fd.get('addrLUX');
+      const addrIND = fd.get('addrIND');
+
+      const timelines = captureTable('timelineTable');      // [task, start, end]
+      const risks = captureTable('riskTable');              // [desc, impact, mitigation, owner, eta]
+      const resources = captureTable('resourceTable');      // [skill, exp, rate, engagement, man days]
+      const commercials = captureTable('commercialTable');  // [type, terms, investment]
+
+      // Build document
+      const doc = new Document({
+        creator: preparedBy || undefined,
+        title: title || 'Proposal',
+        description: 'Generated by Proposal Builder',
+        styles: {
+          paragraphStyles: [
+            {
+              id: "small",
+              name: "Small",
+              basedOn: "Normal",
+              run: { size: 20, color: "374151" }, // ~10pt
+            },
+          ],
+        },
+        sections: [{
+          properties: {},
+          children: [
+            // Cover
+            new Paragraph({ text: title || 'Proposal', heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER, spacing: { after: 300 } }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({ text: `Prepared by: ${preparedBy || '—'}`, break: 1 }),
+                new TextRun({ text: `Version: ${version || '—'}`, break: 1 }),
+                new TextRun({ text: `Date: ${date || '—'}`, break: 1 }),
+              ],
+              spacing: { after: 600 }
+            }),
+
+            // Addresses (optional)
+            ...(addrUSA?.trim() || addrLUX?.trim() || addrIND?.trim()
+              ? [heading('Company Locations', HeadingLevel.HEADING_2),
+                 ...toParas([addrUSA, addrLUX, addrIND].filter(Boolean).join('\n\n'))]
+              : []),
+
+            heading('Table of Contents', HeadingLevel.HEADING_2),
+            ...toParas([
+              '1.1 OVERVIEW',
+              '1.2 BUSINESS OBJECTIVES',
+              '1.3 SCOPE OF WORK',
+              '1.4 PROPOSED SOLUTION OVERVIEW',
+              '1.5 DELIVERABLES',
+              '1.6 PROJECT ORGANIZATION',
+              '1.7 TIMELINES',
+              '1.8 ASSUMPTIONS',
+              '1.9 INITIAL RISK / ISSUES',
+              '1.10 ACCEPTANCE CRITERIA',
+              '1.11 RESOURCE PLAN',
+              '1.12 COMMERCIALS',
+              '1.13 PAYMENT TERMS'
+            ].join('\n')),
+
+            heading('1.1 OVERVIEW'),
+            ...toParas(overview),
+
+            heading('1.2 BUSINESS OBJECTIVES'),
+            ...(businessObjectives && /(^\s*[-•])|(\n\s*[-•])/.test(businessObjectives)
+              ? bullets(businessObjectives)
+              : toParas(businessObjectives)),
+
+            heading('1.3 SCOPE OF WORK'),
+            ...toParas(scope),
+
+            heading('1.4 PROPOSED SOLUTION OVERVIEW'),
+            ...toParas(solution),
+
+            heading('1.5 DELIVERABLES'),
+            ...(deliverables && /(^\s*[-•])|(\n\s*[-•])/.test(deliverables)
+              ? bullets(deliverables)
+              : toParas(deliverables)),
+
+            heading('1.6 PROJECT ORGANIZATION'),
+            ...toParas(organization),
+
+            heading('1.7 TIMELINES'),
+            timelines.length
+              ? new Table({
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  rows: [
+                    new TableRow({
+                      tableHeader: true,
+                      children: ['#', 'Task Details', 'Start', 'End'].map(t =>
+                        new TableCell({ children: [new Paragraph({ text: t, bold: true })] }))
+                    }),
+                    ...timelines.map((r, idx) =>
+                      new TableRow({
+                        children: [
+                          new TableCell({ children: [new Paragraph(String(idx+1))] }),
+                          new TableCell({ children: [new Paragraph(r[0] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[1] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[2] || '')] }),
+                        ]
+                      })
+                    )
+                  ],
+                  borders: {
+                    top: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    bottom: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    left: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    right: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
+                    insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
+                  }
+                })
+              : new Paragraph('—'),
+
+            heading('1.8 ASSUMPTIONS'),
+            ...(assumptions && /(^\s*[-•])|(\n\s*[-•])/.test(assumptions)
+              ? bullets(assumptions)
+              : toParas(assumptions)),
+
+            heading('1.9 INITIAL RISK / ISSUES'),
+            risks.length
+              ? new Table({
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  rows: [
+                    new TableRow({
+                      tableHeader: true,
+                      children: ['#','Risk Description','Impact','Mitigation','Accountable','ETA'].map(t =>
+                        new TableCell({ children: [new Paragraph({ text: t, bold: true })] }))
+                    }),
+                    ...risks.map((r, idx) =>
+                      new TableRow({
+                        children: [
+                          new TableCell({ children: [new Paragraph(String(idx+1))] }),
+                          new TableCell({ children: [new Paragraph(r[0] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[1] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[2] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[3] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[4] || '')] }),
+                        ]
+                      })
+                    )
+                  ],
+                  borders: {
+                    top: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    bottom: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    left: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    right: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
+                    insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
+                  }
+                })
+              : new Paragraph('—'),
+
+            heading('1.10 ACCEPTANCE CRITERIA'),
+            ...toParas(acceptance),
+
+            heading('1.11 RESOURCE PLAN'),
+            resources.length
+              ? new Table({
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  rows: [
+                    new TableRow({
+                      tableHeader: true,
+                      children: ['Sl No','Skill Set','Exp. Level','Daily Rate (INR)','Engagement','Total Man Days'].map(t =>
+                        new TableCell({ children: [new Paragraph({ text: t, bold: true })] }))
+                    }),
+                    ...resources.map((r, idx) =>
+                      new TableRow({
+                        children: [
+                          new TableCell({ children: [new Paragraph(String(idx+1))] }),
+                          new TableCell({ children: [new Paragraph(r[0] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[1] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[2] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[3] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[4] || '')] }),
+                        ]
+                      })
+                    )
+                  ],
+                  borders: {
+                    top: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    bottom: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    left: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    right: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
+                    insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
+                  }
+                })
+              : new Paragraph('—'),
+
+            heading('1.12 COMMERCIALS'),
+            commercials.length
+              ? new Table({
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  rows: [
+                    new TableRow({
+                      tableHeader: true,
+                      children: ['Payment Type','Payment Terms','Investment (INR)'].map(t =>
+                        new TableCell({ children: [new Paragraph({ text: t, bold: true })] }))
+                    }),
+                    ...commercials.map((r) =>
+                      new TableRow({
+                        children: [
+                          new TableCell({ children: [new Paragraph(r[0] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[1] || '')] }),
+                          new TableCell({ children: [new Paragraph(r[2] || '')] }),
+                        ]
+                      })
+                    )
+                  ],
+                  borders: {
+                    top: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    bottom: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    left: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    right: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
+                    insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
+                    insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
+                  }
+                })
+              : new Paragraph('—'),
+
+            heading('1.13 PAYMENT TERMS'),
+            ...toParas(paymentTerms),
+          ]
+        }]
+      });
+
+      const blob = await Packer.toBlob(doc);
+      pendingBlob = blob;
+      openModal();
+    });
+  </script>
+</body>
+</html>
