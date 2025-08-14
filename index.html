@@ -256,7 +256,14 @@
   </footer>
 
   <script>
-    const { Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } = docx;
+    // Guard against missing docx library so other features (like table rows) still work
+    const docxLib = window.docx;
+    let Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle;
+    if (docxLib) {
+      ({ Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } = docxLib);
+    } else {
+      console.warn('docx library not loaded; document generation disabled.');
+    }
 
     // ---------- Helpers ----------
     function q(sel, root=document){ return root.querySelector(sel); }
