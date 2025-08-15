@@ -6,8 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- TailwindCSS CDN for clean design -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- jsPDF for generating PDF documents -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Libraries for template upload & PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://unpkg.com/mammoth@1.4.17/mammoth.browser.min.js"></script>
   <style>
     /* Simple focus & scrollbar polish */
     :root { color-scheme: light dark; }
@@ -19,6 +20,13 @@
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
+  <!-- Initial template upload screen -->
+  <div id="uploadStep" class="fixed inset-0 bg-white flex flex-col items-center justify-center gap-4">
+    <p class="text-lg font-medium">Upload a proposal template (.docx) to begin</p>
+    <input id="templateFile" type="file" accept=".docx" class="border rounded-xl px-4 py-2" />
+  </div>
+
+  <div id="app" class="hidden">
   <header class="bg-white border-b fixed top-0 left-0 w-full z-10">
     <div class="max-w-7xl mx-auto px-4 py-4 flex items-center gap-3">
       <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white grid place-items-center text-xl font-bold">P</div>
@@ -254,13 +262,12 @@
   <footer class="max-w-7xl mx-auto px-4 py-8 text-xs text-slate-500">
     <p>Tip: You can add multiple rows in Timelines, Risks, Resource Plan, and Commercials. The generated .pdf mirrors the proposal structure.</p>
   </footer>
+  </div>
 
   <script>
-    // Ensure jsPDF library is available
-    const jspdfLib = window.jspdf;
-    const jsPDF = jspdfLib && jspdfLib.jsPDF;
-    if (!jsPDF) {
-      console.warn('jsPDF library not loaded; document generation disabled.');
+    // Ensure required libraries are available
+    if (!window.html2pdf || !window.mammoth) {
+      console.warn('Template libraries not loaded; document generation disabled.');
     }
 
     // ---------- Helpers ----------
@@ -301,6 +308,28 @@
       if (!fn.toLowerCase().endsWith('.pdf')) fn += '.pdf';
       return fn.replace(/[\\/:*?"<>|]/g, '_');
     }
+
+    // ---------- Template upload handling ----------
+    let templateBuffer = null;
+    let templateHtml = '';
+    const uploadStep = q('#uploadStep');
+    const templateFile = q('#templateFile');
+    const app = q('#app');
+
+    templateFile.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        templateBuffer = await file.arrayBuffer();
+        const res = await mammoth.convertToHtml({ arrayBuffer: templateBuffer });
+        templateHtml = res.value;
+        uploadStep.classList.add('hidden');
+        app.classList.remove('hidden');
+      } catch (err) {
+        console.error('Failed to read template', err);
+        alert('Failed to load template file.');
+      }
+    });
 
     // ---------- Default seed rows ----------
     addRow('timelineTable', ['index', 'e.g., Requirement Documentation', 'W1 / 2025-08-18', 'W2 / 2025-08-29', 'del']);
@@ -379,8 +408,12 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      if (!jsPDF) {
-        alert('PDF generation library failed to load.\nPlease check your internet connection and try again.');
+      if (!templateBuffer) {
+        alert('Please upload a template file first.');
+        return;
+      }
+      if (!window.html2pdf || !window.mammoth) {
+        alert('Required libraries failed to load.\nPlease check your internet connection and try again.');
         return;
       }
 
@@ -412,88 +445,39 @@
       const commercials = captureTable('commercialTable');  // [type, terms, investment]
 
       try {
-        let content = `${title || 'Proposal'}\nPrepared by: ${preparedBy || '—'} | v${version || '—'} | ${date || '—'}\n\n`;
+        const timelineText = timelines.length
+          ? timelines.map((r, idx) => `${idx+1}. ${r[0] || ''} | ${r[1] || ''} - ${r[2] || ''}`).join('\\n')
+          : '—';
+        const riskText = risks.length
+          ? risks.map((r, idx) => `${idx+1}. ${r[0] || ''} | ${r[1] || ''} | ${r[2] || ''} | ${r[3] || ''} | ${r[4] || ''}`).join('\\n')
+          : '—';
+        const resourceText = resources.length
+          ? resources.map((r, idx) => `${idx+1}. ${r[0] || ''} | ${r[1] || ''} | ${r[2] || ''} | ${r[3] || ''} | ${r[4] || ''}`).join('\\n')
+          : '—';
+        const commercialText = commercials.length
+          ? commercials.map((r) => `${r[0] || ''} | ${r[1] || ''} | ${r[2] || ''}`).join('\\n')
+          : '—';
 
-        if (addrUSA?.trim() || addrLUX?.trim() || addrIND?.trim()) {
-          content += 'Company Locations\n' + [addrUSA, addrLUX, addrIND].filter(Boolean).join('\\n\\n') + '\n\n';
-        }
+        const replacements = {
+          title, preparedBy, version, date,
+          overview, businessObjectives, scope, solution,
+          deliverables, organization, assumptions,
+          acceptance, paymentTerms,
+          addrUSA, addrLUX, addrIND,
+          timelines: timelineText, risks: riskText,
+          resources: resourceText, commercials: commercialText
+        };
 
-        content += 'Table of Contents\n' +
-          ['1.1 OVERVIEW','1.2 BUSINESS OBJECTIVES','1.3 SCOPE OF WORK','1.4 PROPOSED SOLUTION OVERVIEW','1.5 DELIVERABLES','1.6 PROJECT ORGANIZATION','1.7 TIMELINES','1.8 ASSUMPTIONS','1.9 INITIAL RISK / ISSUES','1.10 ACCEPTANCE CRITERIA','1.11 RESOURCE PLAN','1.12 COMMERCIALS','1.13 PAYMENT TERMS'].join('\\n') +
-          '\n\n';
-
-        content += '1.1 OVERVIEW\n' + (overview || '—') + '\n\n';
-        content += '1.2 BUSINESS OBJECTIVES\n' + (businessObjectives || '—') + '\n\n';
-        content += '1.3 SCOPE OF WORK\n' + (scope || '—') + '\n\n';
-        content += '1.4 PROPOSED SOLUTION OVERVIEW\n' + (solution || '—') + '\n\n';
-        content += '1.5 DELIVERABLES\n' + (deliverables || '—') + '\n\n';
-        content += '1.6 PROJECT ORGANIZATION\n' + (organization || '—') + '\n\n';
-
-        content += '1.7 TIMELINES\n';
-        if (timelines.length) {
-          timelines.forEach((r, idx) => {
-            content += `${idx+1}. ${r[0] || ''} | ${r[1] || ''} - ${r[2] || ''}\\n`;
-          });
-        } else {
-          content += '—\n';
-        }
-        content += '\n';
-
-        content += '1.8 ASSUMPTIONS\n' + (assumptions || '—') + '\n\n';
-
-        content += '1.9 INITIAL RISK / ISSUES\n';
-        if (risks.length) {
-          risks.forEach((r, idx) => {
-            content += `${idx+1}. ${r[0] || ''} | ${r[1] || ''} | ${r[2] || ''} | ${r[3] || ''} | ${r[4] || ''}\\n`;
-          });
-        } else {
-          content += '—\n';
-        }
-        content += '\n';
-
-        content += '1.10 ACCEPTANCE CRITERIA\n' + (acceptance || '—') + '\n\n';
-
-        content += '1.11 RESOURCE PLAN\n';
-        if (resources.length) {
-          resources.forEach((r, idx) => {
-            content += `${idx+1}. ${r[0] || ''} | ${r[1] || ''} | ${r[2] || ''} | ${r[3] || ''} | ${r[4] || ''}\\n`;
-          });
-        } else {
-          content += '—\n';
-        }
-        content += '\n';
-
-        content += '1.12 COMMERCIALS\n';
-        if (commercials.length) {
-          commercials.forEach((r) => {
-            content += `${r[0] || ''} | ${r[1] || ''} | ${r[2] || ''}\\n`;
-          });
-        } else {
-          content += '—\n';
-        }
-        content += '\n';
-
-        content += '1.13 PAYMENT TERMS\n' + (paymentTerms || '—') + '\n';
-
-        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-        const margin = 40;
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const usableWidth = pageWidth - margin * 2;
-        const lines = doc.splitTextToSize(content, usableWidth);
-        const lineHeight = 14;
-        let cursorY = margin;
-        const pageHeight = doc.internal.pageSize.getHeight() - margin;
-
-        lines.forEach(line => {
-          if (cursorY > pageHeight) {
-            doc.addPage();
-            cursorY = margin;
-          }
-          doc.text(line, margin, cursorY);
-          cursorY += lineHeight;
+        let html = templateHtml;
+        Object.entries(replacements).forEach(([key, value]) => {
+          const safe = (value || '').toString().replace(/\\n/g, '<br/>');
+          html = html.replace(new RegExp(`{{${key}}}`, 'g'), safe);
         });
 
-        const blob = doc.output('blob');
+        const element = document.createElement('div');
+        element.innerHTML = html;
+
+        const blob = await html2pdf().from(element).set({ filename: fileName }).outputPdf('blob');
         pendingBlob = blob;
         openModal();
       } catch (err) {
