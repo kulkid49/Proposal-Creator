@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- TailwindCSS CDN for clean design -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Docx.js for generating .docx documents -->
-  <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.js"></script>
+  <!-- jsPDF for generating PDF documents -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     /* Simple focus & scrollbar polish */
     :root { color-scheme: light dark; }
@@ -24,7 +24,7 @@
       <div class="w-10 h-10 rounded-2xl bg-indigo-600 text-white grid place-items-center text-xl font-bold">P</div>
       <div>
         <h1 class="text-xl md:text-2xl font-semibold">Proposal Builder</h1>
-        <p class="text-sm text-slate-500">Fill the form → Review → Download a .docx proposal</p>
+        <p class="text-sm text-slate-500">Fill the form → Review → Download a .pdf proposal</p>
       </div>
       <div class="ms-auto">
         <button id="openPreview" type="button" class="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-xl border bg-white hover:bg-slate-50">
@@ -46,8 +46,8 @@
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Document File Name</label>
-            <input name="fileName" class="input w-full rounded-xl border px-3 py-2" placeholder="PT_ISPAT_Proposal_v1.docx" required />
-            <p class="text-xs text-slate-500 mt-1">.docx will be used if you omit the extension.</p>
+            <input name="fileName" class="input w-full rounded-xl border px-3 py-2" placeholder="PT_ISPAT_Proposal_v1.pdf" required />
+            <p class="text-xs text-slate-500 mt-1">.pdf will be used if you omit the extension.</p>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">Prepared By</label>
@@ -243,7 +243,7 @@
   <div id="downloadModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
       <h3 class="text-lg font-semibold">Your proposal is ready</h3>
-      <p class="text-sm text-slate-600 mt-1">Download the generated Word document now?</p>
+      <p class="text-sm text-slate-600 mt-1">Download the generated PDF document now?</p>
       <div class="mt-4 flex items-center gap-2">
         <button id="confirmDownload" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">Download</button>
         <button id="cancelDownload" class="px-4 py-2 rounded-xl border hover:bg-slate-50">Cancel</button>
@@ -252,17 +252,15 @@
   </div>
 
   <footer class="max-w-7xl mx-auto px-4 py-8 text-xs text-slate-500">
-    <p>Tip: You can add multiple rows in Timelines, Risks, Resource Plan, and Commercials. The generated .docx mirrors the proposal structure.</p>
+    <p>Tip: You can add multiple rows in Timelines, Risks, Resource Plan, and Commercials. The generated .pdf mirrors the proposal structure.</p>
   </footer>
 
   <script>
-    // Guard against missing docx library so other features (like table rows) still work
-    const docxLib = window.docx;
-    let Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle;
-    if (docxLib) {
-      ({ Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType, Table, TableRow, TableCell, WidthType, BorderStyle } = docxLib);
-    } else {
-      console.warn('docx library not loaded; document generation disabled.');
+    // Ensure jsPDF library is available
+    const jspdfLib = window.jspdf;
+    const jsPDF = jspdfLib && jspdfLib.jsPDF;
+    if (!jsPDF) {
+      console.warn('jsPDF library not loaded; document generation disabled.');
     }
 
     // ---------- Helpers ----------
@@ -300,22 +298,8 @@
 
     function safeFileName(name) {
       let fn = name.trim();
-      if (!fn.toLowerCase().endsWith('.docx')) fn += '.docx';
+      if (!fn.toLowerCase().endsWith('.pdf')) fn += '.pdf';
       return fn.replace(/[\\/:*?"<>|]/g, '_');
-    }
-
-    function toParas(text) {
-      if (!text || !text.trim()) return [];
-      return text.split(/\n+/).map(line => new Paragraph({ children: [new TextRun(line)] }));
-    }
-
-    function bullets(text) {
-      if (!text || !text.trim()) return [];
-      return text.split(/\n+/).map(line => new Paragraph({ text: line.replace(/^\s*[-•]\s*/, ''), bullet: { level: 0 } }));
-    }
-
-    function heading(txt, level=HeadingLevel.HEADING_2) {
-      return new Paragraph({ text: txt, heading: level, spacing: { before: 240, after: 120 } });
     }
 
     // ---------- Default seed rows ----------
@@ -379,7 +363,7 @@
     q('#confirmDownload').addEventListener('click', () => {
       if (!pendingBlob) return;
       const fd = new FormData(form);
-      const name = safeFileName(fd.get('fileName') || 'Proposal.docx');
+      const name = safeFileName(fd.get('fileName') || 'Proposal.pdf');
       const a = document.createElement('a');
       a.href = URL.createObjectURL(pendingBlob);
       a.download = name;
@@ -391,19 +375,19 @@
       closeModal();
     });
 
-    // Submit -> build docx -> ask to download
+    // Submit -> build pdf -> ask to download
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      if (!docxLib) {
-        alert('Document generation library failed to load.\nPlease check your internet connection and try again.');
+      if (!jsPDF) {
+        alert('PDF generation library failed to load.\nPlease check your internet connection and try again.');
         return;
       }
 
       const fd = new FormData(form);
 
       const title = (fd.get('title') || '').trim();
-      const fileName = safeFileName(fd.get('fileName') || 'Proposal.docx');
+      const fileName = safeFileName(fd.get('fileName') || 'Proposal.pdf');
       const preparedBy = (fd.get('preparedBy') || '').trim();
       const version = (fd.get('version') || '').trim();
       const date = (fd.get('date') || '').trim();
@@ -428,227 +412,73 @@
       const commercials = captureTable('commercialTable');  // [type, terms, investment]
 
       try {
-        // Build document
-        const doc = new Document({
-          creator: preparedBy || undefined,
-          title: title || 'Proposal',
-          description: 'Generated by Proposal Builder',
-          styles: {
-            paragraphStyles: [
-            {
-              id: "small",
-              name: "Small",
-              basedOn: "Normal",
-              run: { size: 20, color: "374151" }, // ~10pt
-            },
-          ],
-        },
-        sections: [{
-          properties: {},
-          children: [
-            // Cover
-            new Paragraph({ text: title || 'Proposal', heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER, spacing: { after: 300 } }),
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [
-                new TextRun({ text: `Prepared by: ${preparedBy || '—'}`, break: 1 }),
-                new TextRun({ text: `Version: ${version || '—'}`, break: 1 }),
-                new TextRun({ text: `Date: ${date || '—'}`, break: 1 }),
-              ],
-              spacing: { after: 600 }
-            }),
+        let content = `${title || 'Proposal'}\nPrepared by: ${preparedBy || '—'} | v${version || '—'} | ${date || '—'}\n\n`;
 
-            // Addresses (optional)
-            ...(addrUSA?.trim() || addrLUX?.trim() || addrIND?.trim()
-              ? [heading('Company Locations', HeadingLevel.HEADING_2),
-                 ...toParas([addrUSA, addrLUX, addrIND].filter(Boolean).join('\n\n'))]
-              : []),
+        if (addrUSA?.trim() || addrLUX?.trim() || addrIND?.trim()) {
+          content += 'Company Locations\n' + [addrUSA, addrLUX, addrIND].filter(Boolean).join('\\n\\n') + '\n\n';
+        }
 
-            heading('Table of Contents', HeadingLevel.HEADING_2),
-            ...toParas([
-              '1.1 OVERVIEW',
-              '1.2 BUSINESS OBJECTIVES',
-              '1.3 SCOPE OF WORK',
-              '1.4 PROPOSED SOLUTION OVERVIEW',
-              '1.5 DELIVERABLES',
-              '1.6 PROJECT ORGANIZATION',
-              '1.7 TIMELINES',
-              '1.8 ASSUMPTIONS',
-              '1.9 INITIAL RISK / ISSUES',
-              '1.10 ACCEPTANCE CRITERIA',
-              '1.11 RESOURCE PLAN',
-              '1.12 COMMERCIALS',
-              '1.13 PAYMENT TERMS'
-            ].join('\n')),
+        content += 'Table of Contents\n' +
+          ['1.1 OVERVIEW','1.2 BUSINESS OBJECTIVES','1.3 SCOPE OF WORK','1.4 PROPOSED SOLUTION OVERVIEW','1.5 DELIVERABLES','1.6 PROJECT ORGANIZATION','1.7 TIMELINES','1.8 ASSUMPTIONS','1.9 INITIAL RISK / ISSUES','1.10 ACCEPTANCE CRITERIA','1.11 RESOURCE PLAN','1.12 COMMERCIALS','1.13 PAYMENT TERMS'].join('\\n') +
+          '\n\n';
 
-            heading('1.1 OVERVIEW'),
-            ...toParas(overview),
+        content += '1.1 OVERVIEW\n' + (overview || '—') + '\n\n';
+        content += '1.2 BUSINESS OBJECTIVES\n' + (businessObjectives || '—') + '\n\n';
+        content += '1.3 SCOPE OF WORK\n' + (scope || '—') + '\n\n';
+        content += '1.4 PROPOSED SOLUTION OVERVIEW\n' + (solution || '—') + '\n\n';
+        content += '1.5 DELIVERABLES\n' + (deliverables || '—') + '\n\n';
+        content += '1.6 PROJECT ORGANIZATION\n' + (organization || '—') + '\n\n';
 
-            heading('1.2 BUSINESS OBJECTIVES'),
-            ...(businessObjectives && /(^\s*[-•])|(\n\s*[-•])/.test(businessObjectives)
-              ? bullets(businessObjectives)
-              : toParas(businessObjectives)),
+        content += '1.7 TIMELINES\n';
+        if (timelines.length) {
+          timelines.forEach((r, idx) => {
+            content += `${idx+1}. ${r[0] || ''} | ${r[1] || ''} - ${r[2] || ''}\\n`;
+          });
+        } else {
+          content += '—\n';
+        }
+        content += '\n';
 
-            heading('1.3 SCOPE OF WORK'),
-            ...toParas(scope),
+        content += '1.8 ASSUMPTIONS\n' + (assumptions || '—') + '\n\n';
 
-            heading('1.4 PROPOSED SOLUTION OVERVIEW'),
-            ...toParas(solution),
+        content += '1.9 INITIAL RISK / ISSUES\n';
+        if (risks.length) {
+          risks.forEach((r, idx) => {
+            content += `${idx+1}. ${r[0] || ''} | ${r[1] || ''} | ${r[2] || ''} | ${r[3] || ''} | ${r[4] || ''}\\n`;
+          });
+        } else {
+          content += '—\n';
+        }
+        content += '\n';
 
-            heading('1.5 DELIVERABLES'),
-            ...(deliverables && /(^\s*[-•])|(\n\s*[-•])/.test(deliverables)
-              ? bullets(deliverables)
-              : toParas(deliverables)),
+        content += '1.10 ACCEPTANCE CRITERIA\n' + (acceptance || '—') + '\n\n';
 
-            heading('1.6 PROJECT ORGANIZATION'),
-            ...toParas(organization),
+        content += '1.11 RESOURCE PLAN\n';
+        if (resources.length) {
+          resources.forEach((r, idx) => {
+            content += `${idx+1}. ${r[0] || ''} | ${r[1] || ''} | ${r[2] || ''} | ${r[3] || ''} | ${r[4] || ''}\\n`;
+          });
+        } else {
+          content += '—\n';
+        }
+        content += '\n';
 
-            heading('1.7 TIMELINES'),
-            timelines.length
-              ? new Table({
-                  width: { size: 100, type: WidthType.PERCENTAGE },
-                  rows: [
-                    new TableRow({
-                      tableHeader: true,
-                      children: ['#', 'Task Details', 'Start', 'End'].map(t =>
-                        new TableCell({ children: [new Paragraph({ text: t, bold: true })] }))
-                    }),
-                    ...timelines.map((r, idx) =>
-                      new TableRow({
-                        children: [
-                          new TableCell({ children: [new Paragraph(String(idx+1))] }),
-                          new TableCell({ children: [new Paragraph(r[0] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[1] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[2] || '')] }),
-                        ]
-                      })
-                    )
-                  ],
-                  borders: {
-                    top: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    bottom: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    left: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    right: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
-                    insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
-                  }
-                })
-              : new Paragraph('—'),
+        content += '1.12 COMMERCIALS\n';
+        if (commercials.length) {
+          commercials.forEach((r) => {
+            content += `${r[0] || ''} | ${r[1] || ''} | ${r[2] || ''}\\n`;
+          });
+        } else {
+          content += '—\n';
+        }
+        content += '\n';
 
-            heading('1.8 ASSUMPTIONS'),
-            ...(assumptions && /(^\s*[-•])|(\n\s*[-•])/.test(assumptions)
-              ? bullets(assumptions)
-              : toParas(assumptions)),
+        content += '1.13 PAYMENT TERMS\n' + (paymentTerms || '—') + '\n';
 
-            heading('1.9 INITIAL RISK / ISSUES'),
-            risks.length
-              ? new Table({
-                  width: { size: 100, type: WidthType.PERCENTAGE },
-                  rows: [
-                    new TableRow({
-                      tableHeader: true,
-                      children: ['#','Risk Description','Impact','Mitigation','Accountable','ETA'].map(t =>
-                        new TableCell({ children: [new Paragraph({ text: t, bold: true })] }))
-                    }),
-                    ...risks.map((r, idx) =>
-                      new TableRow({
-                        children: [
-                          new TableCell({ children: [new Paragraph(String(idx+1))] }),
-                          new TableCell({ children: [new Paragraph(r[0] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[1] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[2] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[3] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[4] || '')] }),
-                        ]
-                      })
-                    )
-                  ],
-                  borders: {
-                    top: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    bottom: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    left: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    right: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
-                    insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
-                  }
-                })
-              : new Paragraph('—'),
-
-            heading('1.10 ACCEPTANCE CRITERIA'),
-            ...toParas(acceptance),
-
-            heading('1.11 RESOURCE PLAN'),
-            resources.length
-              ? new Table({
-                  width: { size: 100, type: WidthType.PERCENTAGE },
-                  rows: [
-                    new TableRow({
-                      tableHeader: true,
-                      children: ['Sl No','Skill Set','Exp. Level','Daily Rate (INR)','Engagement','Total Man Days'].map(t =>
-                        new TableCell({ children: [new Paragraph({ text: t, bold: true })] }))
-                    }),
-                    ...resources.map((r, idx) =>
-                      new TableRow({
-                        children: [
-                          new TableCell({ children: [new Paragraph(String(idx+1))] }),
-                          new TableCell({ children: [new Paragraph(r[0] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[1] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[2] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[3] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[4] || '')] }),
-                        ]
-                      })
-                    )
-                  ],
-                  borders: {
-                    top: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    bottom: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    left: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    right: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
-                    insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
-                  }
-                })
-              : new Paragraph('—'),
-
-            heading('1.12 COMMERCIALS'),
-            commercials.length
-              ? new Table({
-                  width: { size: 100, type: WidthType.PERCENTAGE },
-                  rows: [
-                    new TableRow({
-                      tableHeader: true,
-                      children: ['Payment Type','Payment Terms','Investment (INR)'].map(t =>
-                        new TableCell({ children: [new Paragraph({ text: t, bold: true })] }))
-                    }),
-                    ...commercials.map((r) =>
-                      new TableRow({
-                        children: [
-                          new TableCell({ children: [new Paragraph(r[0] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[1] || '')] }),
-                          new TableCell({ children: [new Paragraph(r[2] || '')] }),
-                        ]
-                      })
-                    )
-                  ],
-                  borders: {
-                    top: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    bottom: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    left: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    right: { style: BorderStyle.SINGLE, size: 1, color: "d1d5db" },
-                    insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
-                    insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "e5e7eb" },
-                  }
-                })
-              : new Paragraph('—'),
-
-            heading('1.13 PAYMENT TERMS'),
-            ...toParas(paymentTerms),
-          ]
-        }]
-        });
-
-        const blob = await Packer.toBlob(doc);
+        const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+        const lines = doc.splitTextToSize(content, 520);
+        doc.text(lines, 40, 40);
+        const blob = doc.output('blob');
         pendingBlob = blob;
         openModal();
       } catch (err) {
