@@ -476,8 +476,23 @@
         content += '1.13 PAYMENT TERMS\n' + (paymentTerms || '—') + '\n';
 
         const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-        const lines = doc.splitTextToSize(content, 520);
-        doc.text(lines, 40, 40);
+        const margin = 40;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const usableWidth = pageWidth - margin * 2;
+        const lines = doc.splitTextToSize(content, usableWidth);
+        const lineHeight = 14;
+        let cursorY = margin;
+        const pageHeight = doc.internal.pageSize.getHeight() - margin;
+
+        lines.forEach(line => {
+          if (cursorY > pageHeight) {
+            doc.addPage();
+            cursorY = margin;
+          }
+          doc.text(line, margin, cursorY);
+          cursorY += lineHeight;
+        });
+
         const blob = doc.output('blob');
         pendingBlob = blob;
         openModal();
