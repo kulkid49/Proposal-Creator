@@ -8,7 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Libraries for template upload & PDF generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="https://unpkg.com/mammoth@1.4.17/mammoth.browser.min.js"></script>
+  <script src="https://unpkg.com/docx-preview@0.2.1/dist/docx-preview.min.js"></script>
   <style>
     /* Simple focus & scrollbar polish */
     :root { color-scheme: light dark; }
@@ -266,7 +266,7 @@
 
   <script>
     // Ensure required libraries are available
-    if (!window.html2pdf || !window.mammoth) {
+    if (!window.html2pdf || !window.docx) {
       console.warn('Template libraries not loaded; document generation disabled.');
     }
 
@@ -321,8 +321,9 @@
       if (!file) return;
       try {
         templateBuffer = await file.arrayBuffer();
-        const res = await mammoth.convertToHtml({ arrayBuffer: templateBuffer });
-        templateHtml = res.value;
+        const container = document.createElement('div');
+        await docx.renderAsync(templateBuffer, container, undefined, { inWrapper: false });
+        templateHtml = container.innerHTML;
         uploadStep.classList.add('hidden');
         app.classList.remove('hidden');
       } catch (err) {
@@ -412,7 +413,7 @@
         alert('Please upload a template file first.');
         return;
       }
-      if (!window.html2pdf || !window.mammoth) {
+      if (!window.html2pdf || !window.docx) {
         alert('Required libraries failed to load.\nPlease check your internet connection and try again.');
         return;
       }
